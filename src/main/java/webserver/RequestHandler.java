@@ -4,6 +4,7 @@ import model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import util.HttpRequestUtils;
+import util.IOUtils;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -14,6 +15,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Map;
 
 public class RequestHandler extends Thread {
@@ -37,22 +39,25 @@ public class RequestHandler extends Thread {
             }
 
             String url = HttpRequestUtils.getUrl(line);
+            Map<String, String> headers = new HashMap<>();
+
+            while(!line.equals("")) {
+                log.debug("header: {}", line);
+                line = br.readLine();
+                String[] headerTokens = line.split(": ");
+                if (headerTokens.length == 2) {
+                    headers.put(headerTokens[0], headerTokens[1]);
+                }
+            }
+            log.debug("Content-Length: {}", headers.get("Content-Length"));
+
             if (url.startsWith("/user/create")) {
-                int index = url.indexOf("?");
-//                String requestPath = url.substring(0, index);
-                String queryString = url.substring(index + 1);
-                Map<String, String> params = HttpRequestUtils.parseQueryString(queryString);
-                User user = new User(params.get("userId"), params.get("password"), params.get("name"), params.get("email"));
-                log.debug("User: {}", user);
+                String requestBody = IOUtils.readData(br, Integer.parseInt(headers.get("Content-Length")));
+                log.debug("Request Body: {}", requestBody);
+//                User user = new User(params.get("userId"), params.get("password"), params.get("name"), params.get("email"));
+//                log.debug("User: {}", user);
                 url = "/index.html";
             }
-//            line != null로 하면 무한루프에 빠질 수 있다.
-//            http 요청의 마지막 줄은 빈문자열로 되어 있다는 점을 이용한다.
-//            while(!line.equals("")) {
-//                log.debug("header: {}", line);
-//                line = br.readLine();
-//                // log로 출력할 경우, 어느 thread에서 실행되는지, 어느 클래스에서 출력되는지 알 수 있다.
-//            }
             DataOutputStream dos = new DataOutputStream(out);
             byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
             response200Header(dos, body.length);
