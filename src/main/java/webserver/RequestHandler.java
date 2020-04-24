@@ -2,6 +2,7 @@ package webserver;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import util.HttpRequestUtils;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -32,12 +33,6 @@ public class RequestHandler extends Thread {
             if (line == null) {
                 return;
             }
-
-            String[] splited = line.split(" ");
-            // 요청 헤더에서 /index.html 부분만 꺼내온다.
-            String path = splited[1];
-            log.debug("request path: {}", path);
-
 //            line != null로 하면 무한루프에 빠질 수 있다.
 //            http 요청의 마지막 줄은 빈문자열로 되어 있다는 점을 이용한다.
 //            while(!line.equals("")) {
@@ -45,8 +40,10 @@ public class RequestHandler extends Thread {
 //                line = br.readLine();
 //                // log로 출력할 경우, 어느 thread에서 실행되는지, 어느 클래스에서 출력되는지 알 수 있다.
 //            }
+
+            String url = HttpRequestUtils.getUrl(line);
             DataOutputStream dos = new DataOutputStream(out);
-            byte[] body = Files.readAllBytes(new File("./webapp" + path).toPath());
+            byte[] body = Files.readAllBytes(new File("./webapp" + url).toPath());
             response200Header(dos, body.length);
             responseBody(dos, body);
         } catch (IOException e) {
