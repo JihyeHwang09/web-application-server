@@ -1,4 +1,4 @@
-package webserver;
+package http;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,11 +21,9 @@ HttpRequest의 책임은 클라이언트 요청 데이터를 읽은 후,
 public class HttpRequest {
     private static final Logger log = LoggerFactory.getLogger(HttpRequest.class);
 
-    private String method;
-    private String path;
     private Map<String, String> headers = new HashMap<>();
     private Map<String, String> params = new HashMap<>();
-
+    private RequestLine requestLine;
     /*
     HttpRequest는 InputStream을 생성자의 인자로 받은 후,
     InputStream에 담겨있는 데이터를 필요한 형태로 분리한 후 객체의 필드에 저장하는 역할만 한다.
@@ -39,7 +37,7 @@ public class HttpRequest {
                 return;
             }
 
-            processRequestLine(line);
+            requestLine = new RequestLine(line);
 
             line = br.readLine();
             while (!line.equals("")) {
@@ -49,40 +47,23 @@ public class HttpRequest {
                 line = br.readLine();
             }
 
-            if ("POST".equals(method)) {
+            if ("POST".equals(getMethod())) {
                 String body = IOUtils.readData(br, Integer.parseInt(headers.get("Content-Length")));
                 params = HttpRequestUtils.parseQueryString(body);
+            } else {
+                params = requestLine.getParams();
             }
         } catch (IOException io) {
             log.error(io.getMessage());
         }
     }
 
-    private void processRequestLine(String requestLine) {
-        log.debug("request Line : {}", requestLine);
-        String[] tokens = requestLine.split(" ");
-        method = tokens[0];
-
-        if ("POST".equals(method)) {
-            path = tokens[1];
-            return;
-        }
-
-        int index = tokens[1].indexOf("?");
-        if (index == -1) {
-            path = tokens[1];
-        } else {
-            path = tokens[1].substring(0, index);
-            params = HttpRequestUtils.parseQueryString(
-                    tokens[1].substring(index+1));
-        }
-    }
     public String getMethod() {
-        return method;
+        return requestLine.getMethod();
     }
 
     public String getPath() {
-        return path;
+        return requestLine.getPath();
     }
 
     public String getHeader(String name) {
